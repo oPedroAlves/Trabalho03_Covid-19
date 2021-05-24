@@ -1,0 +1,161 @@
+---
+title: "Trabalho 01"
+author: "Pedro Alves"
+output:
+  html_document:
+    df_print: paged
+---
+
+## Leitura de Arquivos
+
+```{r, message=FALSE,echo=FALSE,warning=FALSE}
+df = read.csv("F:\\Arquivos\\files_R\\R\\Trabalho03\\covid_data.csv", sep = ";")
+```
+
+## 1 - Crie uma tabela para as UF e Brasil, com três colunas:  data da primeira ocorrência, o número de casos atuais e número de mortes atuais.
+ 
+
+```{r, message=FALSE,echo=FALSE,warning=FALSE}
+df$date = as.Date(df$date,"%d/%m/%Y")
+df$is_last = as.logical(df$is_last)
+ufs = unique(df$state)
+#nowadays confirmed
+n_confirmed = 1:length(ufs)
+#nowadays deaths
+n_deaths = 1:length(ufs)
+#first confirmed
+f_confirmed = df$date[1:length(ufs)]
+for (i in 1:length(ufs)) {
+  n_confirmed[i] = df$confirmed[which(df$is_last == TRUE & df$state == ufs[i])] 
+}
+for (i in 1:length(ufs)) {
+  n_deaths[i] = df$deaths[which(df$is_last == TRUE & df$state == ufs[i])] 
+}
+for (i in 1:length(ufs)) {
+  f_confirmed[i] = sort(df$date[df$state == ufs[i] & df$confirmed != 0])[1] 
+}
+#Table_Brazil_&_UFs
+t_brazil = data.frame(f_confirmed,n_confirmed,n_deaths)
+colnames(t_brazil) = c("1ª ocorrência","Nº Confirmados","Nº Mortes")
+t_brazil[28,1] = sort(f_confirmed)[1]
+t_brazil[28,2] = sum(n_confirmed)
+t_brazil[28,3] = sum(n_deaths)
+rownames(t_brazil) = c(ufs,"Brasil")
+t_brazil = t_brazil[order(t_brazil$`Nº Confirmados`, decreasing = TRUE),]
+#Table presentation
+library(knitr)
+kable(t_brazil)
+```
+
+## 2 - Faça um rank das UF pelo número de ocorrência e mortes. São duas tabelas, uma para ocorrência mais atuais e a outra para mortes mais atuais
+
+```{r, message=FALSE,echo=FALSE,warning=FALSE}
+#Table of UFs Rank by confirmed cases
+t_rank_confirmed = data.frame(ufs,n_confirmed)
+t_rank_confirmed = t_rank_confirmed[order(t_rank_confirmed$n_confirmed, decreasing = TRUE),]
+#Table of UFs Rank by deaths
+t_rank_deaths = data.frame(ufs,n_deaths)
+t_rank_deaths = t_rank_deaths[order(t_rank_deaths$n_deaths, decreasing = TRUE),]
+```
+
+## a. Quais são a 3 UF com mais ocorrência e as 3 UF com mais mortes?
+
+```{r, message=FALSE,echo=FALSE,warning=FALSE}
+writeLines("As três UFs com mais casos confirmados: ")
+t_rank_confirmed$ufs[1:3]
+writeLines("As três UFs com mais mortes por covid: ")
+t_rank_deaths$ufs[1:3]
+```
+
+## b. Como você analisa esta informação? Você acha que este deveria ser um critério de prioridade para definição de uma politica de ajuda?
+
+```{r, message=FALSE,echo=FALSE,warning=FALSE}
+writeLines("Evidentemente, a política que se abstém dos mínimos critérios para uma avaliação de prioridade incorre no erro de má alocação de recursos. Isto pode gerar mortes desnecessárias.")
+```
+
+## 3. Como se comportou este rank ao longo dos meses, desde o inicio dos casos no país? (tabela igual a da questão 2, uma tabela a cada mes)
+
+```{r, message=FALSE,echo=FALSE,warning=FALSE}
+df$month = months(df$date)
+max_case = aggregate.data.frame(df$confirmed,list(UFs = df$state, Mes = df$month),"max")
+colnames(max_case) = c("UFs","Mes","Total_casos")
+max_death = aggregate.data.frame(df$deaths,list(UFs = df$state, Mes = df$month),"max")
+colnames(max_death) = c("UFs","Mes","Total_mortes")
+df_mes = cbind(max_case,max_death$Total_mortes)
+colnames(df_mes) = c("UFs","Mes","Total_casos","Total_mortes")
+#february
+df_feb = df_mes[df_mes$Mes =="fevereiro",]
+kable(df_feb[order(df_feb$Total_casos, decreasing = TRUE)[1:3],])
+#march
+df_mar = df_mes[df_mes$Mes =="março",]
+kable(df_mar[order(df_mar$Total_casos, decreasing = TRUE)[1:3],])
+#april
+df_apr = df_mes[df_mes$Mes =="abril",]
+kable(df_apr[order(df_apr$Total_casos, decreasing = TRUE)[1:3],])
+#may
+df_may = df_mes[df_mes$Mes =="maio",]
+kable(df_may[order(df_may$Total_casos, decreasing = TRUE)[1:3],])
+#june
+df_jun = df_mes[df_mes$Mes =="junho",]
+kable(df_jun[order(df_jun$Total_casos, decreasing = TRUE)[1:3],])
+```
+
+## 4. Faça um gráfico do número de ocorrência e do número de mortes para o país e para o Rio de Janeiro. Estamos nos fim da epidemia?
+
+```{r, message=FALSE,echo=FALSE,warning=FALSE}
+#Data frame about Rio
+df_rio = df[!(df$state == "RJ"),]
+confirmed_cases_rio = sort(df_rio$confirmed, decreasing = FALSE)
+deaths_rio = sort(df_rio$deaths, decreasing = FALSE)
+confirmed_case_brazil = aggregate.data.frame(df$confirmed,list(Data = df$date),"sum")
+deaths_brazil = aggregate.data.frame(df$deaths,list(Data = df$date),"sum")
+plot(confirmed_cases_rio, main = "Casos confirmados no Rio", ylab = "Casos confirmados", xlab = "Tempo", type = "l")
+plot(deaths_rio, main = "Mortes no Rio por Cov-19", ylab = "Mortes", xlab = "Tempo", type = "l")
+plot(confirmed_case_brazil, main = "Casos confirmados no Brasil",ylab = "Casos",xlab = "Data", type = "l")
+plot(deaths_brazil, main = "Mortes no Brasil por Cov-19",ylab = "Mortes",xlab = "Data", type = "l")
+#Data frame about Brazil
+```
+
+## 5. Faça uma análise utilizando a taxa por 100.000 habitantes ( um rank dos melhores e piores)
+
+```{r, message=FALSE,echo=FALSE,warning=FALSE}
+death_by_hundred_thousand = 1:length(ufs)
+for (i in 1:length(ufs)){
+  death_by_hundred_thousand[i] = trunc(df$deaths[which(df$is_last == TRUE & df$state == ufs[i])]/(df$pop_2019[which(df$is_last == TRUE & df$state == ufs[i])]/100000))
+}
+cases_by_hundred_thousand = 1:length(ufs)
+for (i in 1:length(ufs)){
+  cases_by_hundred_thousand[i] = trunc(df$confirmed[which(df$is_last == TRUE & df$state == ufs[i])]/(df$pop_2019[which(df$is_last == TRUE & df$state == ufs[i])]/100000))
+}
+df_index = cbind(ufs,cases_by_hundred_thousand,death_by_hundred_thousand)
+kable(df_index)
+
+```
+
+## 6.Faça um gráfico dos casos diários para o RJ e BR
+
+```{r, message=FALSE,echo=FALSE,warning=FALSE}
+#Rio
+aux_cases = c(0,df$confirmed[which(df$state == "RJ")])
+aux_cases = aux_cases[-length(aux_cases)]
+aux_cases2 = df$confirmed[which(df$state == "RJ")]
+cases_by_day_rio = aux_cases2 - aux_cases
+plot(cases_by_day_rio, type = "l", main = "Casos por dia no Rio", xlab = "Data", ylab = "Casos")
+aux_deaths = c(0,df$deaths[which(df$state == "RJ")])
+aux_deaths = aux_deaths[-length(aux_deaths)]
+aux_deaths2 = df$deaths[which(df$state == "RJ")]
+deaths_by_day_rio = aux_deaths2 - aux_deaths
+plot(deaths_by_day_rio, type = "l", main = "Mortes por dia no Rio", xlab = "Data", ylab = "Casos")
+#Brazil
+aux_cases_brazil = c(0,confirmed_case_brazil$x)
+aux_cases_brazil = aux_cases_brazil[-length(aux_cases_brazil)]
+aux_cases_brazil2 = confirmed_case_brazil$x
+cases_by_day_brazil = aux_cases_brazil2 - aux_cases_brazil
+plot(cases_by_day_brazil, type = "l", main = "Casos por dia no Brasil", xlab = "Data", ylab = "Casos")
+aux_deaths_brazil = c(0,deaths_brazil$x)
+aux_deaths_brazil = aux_deaths_brazil[-length(aux_deaths_brazil)]
+aux_deaths_brazil2 = deaths_brazil$x
+deaths_by_day_brazil = aux_deaths_brazil2 - aux_deaths_brazil
+plot(deaths_by_day_brazil, type = "l", main = "Mortes por dia no Brasil", xlab = "Data", ylab = "Casos")
+```
+
